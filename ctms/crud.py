@@ -3,9 +3,18 @@ from typing import Dict, List, Optional
 from pydantic import UUID4, EmailStr
 from sqlalchemy.orm import Session
 
-from .models import AmoAccount, Email, FirefoxAccount, Newsletter, VpnWaitlist
+from .auth import hash_password
+from .models import (
+    AmoAccount,
+    ApiClient,
+    Email,
+    FirefoxAccount,
+    Newsletter,
+    VpnWaitlist,
+)
 from .schemas import (
     AddOnsSchema,
+    ApiClientSchema,
     ContactInSchema,
     ContactSchema,
     EmailInSchema,
@@ -143,3 +152,13 @@ def create_contact(db: Session, email_id: UUID4, contact: ContactInSchema):
         create_vpn_waitlist(db, email_id, contact.vpn_waitlist)
     for newsletter in contact.newsletters:
         create_newsletter(db, email_id, newsletter)
+
+
+def create_api_client(db: Session, api_client: ApiClientSchema, secret):
+    hashed_secret = hash_password(secret)
+    db_api_client = ApiClient(hashed_secret=hashed_secret, **api_client.dict())
+    db.add(db_api_client)
+
+
+def get_api_client_by_name(db: Session, name: str):
+    return db.query(ApiClient).filter(ApiClient.name == name).one_or_none()
