@@ -55,6 +55,7 @@ RUN poetry install
 
 WORKDIR /app
 COPY . .
+RUN poetry install
 
 EXPOSE 8000
 ENTRYPOINT /docker-entrypoint.sh $0 $@
