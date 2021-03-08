@@ -438,7 +438,11 @@ def login(
         raise failedAuth
 
     access_token = create_access_token(data={"sub": name}, **token_settings)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": token_settings["expires_delta"].total_seconds(),
+    }
 
 
 # NOTE:  This endpoint should provide a better proxy of "health".  It presently is a

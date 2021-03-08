@@ -51,6 +51,7 @@ def test_post_token_header(anon_client, test_token_settings, client_id_and_secre
     assert resp.status_code == 200
     content = resp.json()
     assert content["token_type"] == "bearer"
+    assert content["expires_in"] == 5 * 60
     payload = jwt.decode(
         content["access_token"],
         test_token_settings["secret_key"],
