@@ -3,13 +3,8 @@ Implement OAuth2 client credentials.
 
 A backend client POSTs to the /token endpoint, sending client_id and
 client_secret, either as form fields in the body, or in the Authentication
-header. A JWT token is returned, that expires after a short time. To renew,
+header. A JWT token is returned that expires after a short time. To renew,
 the client POSTs to /token again.
-
-See:
-* https://github.com/tiangolo/fastapi/issues/774
-* https://github.com/tiangolo/fastapi/blob/c09e950bd2efb81f82931469bee6856c72e54357/fastapi/security/oauth2.py
-* https://tools.ietf.org/html/rfc6749
 """
 from datetime import datetime, timedelta
 from typing import Dict, Optional
@@ -23,14 +18,18 @@ from passlib.context import CryptContext
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated=["auto"])
+# Argon2 is the winner of the 2015 password hashing competion.
+# It is supported by passlib with the recommended argon2_cffi library.
+pwd_context = CryptContext(schemes=["argon2"], deprecated=["auto"])
 
 
 def verify_password(plain_password, hashed_password):
+    """Verify the password, using a constant time equality check."""
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def hash_password(plain_password):
+    """Hash the password, using the pre-configured CryptContext."""
     return pwd_context.hash(plain_password)
 
 
@@ -96,32 +95,37 @@ class OAuth2ClientCredentialsRequestForm:
 
 
 class OAuth2ClientCredentials(OAuth2):
-    """Implement OAuth2 client_credentials workflow."""
+    """
+    Implement OAuth2 client_credentials workflow.
+
+    This is modeled after the OAuth2PasswordBearer and OAuth2AuthorizationCodeBearer
+    classes from FastAPI, but sets auto_error to True to avoid uncovered branches.
+    See https://github.com/tiangolo/fastapi/issues/774 for original implementation,
+    and to check if FastAPI added a similar class.
+
+    See RFC 6749 for details of the client credentials authorization grant.
+    """
 
     def __init__(
         self,
         tokenUrl: str,
         scheme_name: Optional[str] = None,
         scopes: Optional[Dict[str, str]] = None,
-        auto_error: bool = True,
     ):
         if not scopes:
             scopes = {}
         flows = OAuthFlowsModel(
             clientCredentials={"tokenUrl": tokenUrl, "scopes": scopes}
         )
-        super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
+        super().__init__(flows=flows, scheme_name=scheme_name, auto_error=True)
 
     async def __call__(self, request: Request) -> Optional[str]:
         authorization: str = request.headers.get("Authorization")
         scheme, param = get_authorization_scheme_param(authorization)
         if not authorization or scheme.lower() != "bearer":
-            if self.auto_error:
-                raise HTTPException(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            else:
-                return None
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return param
