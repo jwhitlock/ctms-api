@@ -57,7 +57,7 @@ def test_post_token_header(anon_client, test_token_settings, client_id_and_secre
         test_token_settings["secret_key"],
         algorithms=[test_token_settings["algorithm"]],
     )
-    assert payload["sub"] == "db_api_client"
+    assert payload["sub"] == "api_client:db_api_client"
     expected_expires = (
         datetime.utcnow() + test_token_settings["expires_delta"]
     ).timestamp()
@@ -84,7 +84,7 @@ def test_post_token_form_data(anon_client, test_token_settings, client_id_and_se
         test_token_settings["secret_key"],
         algorithms=[test_token_settings["algorithm"]],
     )
-    assert payload["sub"] == "db_api_client"
+    assert payload["sub"] == "api_client:db_api_client"
     expected_expires = (
         datetime.utcnow() + test_token_settings["expires_delta"]
     ).timestamp()
@@ -157,7 +157,9 @@ def test_get_ctms_with_token(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """An authenticated API can be fetched with a valid token"""
-    token = create_access_token({"sub": "db_api_client"}, **test_token_settings)
+    token = create_access_token(
+        {"sub": "api_client:db_api_client"}, **test_token_settings
+    )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
         headers={"Authorization": f"Bearer {token}"},
@@ -170,7 +172,25 @@ def test_get_ctms_with_invalid_token_fails(
 ):
     """Calling an authenticated API with an invalid token is an error"""
     token = create_access_token(
-        {"sub": "db_api_client"},
+        {"sub": "api_client:db_api_client"},
+        secret_key="secret_key_from_other_deploy",
+        algorithm=test_token_settings["algorithm"],
+        expires_delta=test_token_settings["expires_delta"],
+    )
+    resp = anon_client.get(
+        f"/ctms/{example_contact.email.email_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 401
+    assert resp.json() == {"detail": "Could not validate credentials"}
+
+
+def test_get_ctms_with_invalid_namespace_fails(
+    example_contact, anon_client, test_token_settings, client_id_and_secret
+):
+    """Calling an authenticated API with an unexpected namespace is an error"""
+    token = create_access_token(
+        {"sub": "unknown:db_api_client"},
         secret_key="secret_key_from_other_deploy",
         algorithm=test_token_settings["algorithm"],
         expires_delta=test_token_settings["expires_delta"],
@@ -187,7 +207,9 @@ def test_get_ctms_with_unknown_client_fails(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """A token with an unknown (deleted?) API client name is an error"""
-    token = create_access_token({"sub": "not_db_api_client"}, **test_token_settings)
+    token = create_access_token(
+        {"sub": "api_client:not_db_api_client"}, **test_token_settings
+    )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
         headers={"Authorization": f"Bearer {token}"},
@@ -202,7 +224,7 @@ def test_get_ctms_with_expired_token_fails(
     """Calling an authenticated API with an expired token is an error"""
     yesterday = datetime.utcnow() - timedelta(days=1)
     token = create_access_token(
-        {"sub": "db_api_client"}, **test_token_settings, now=yesterday
+        {"sub": "api_client:db_api_client"}, **test_token_settings, now=yesterday
     )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
@@ -216,7 +238,9 @@ def test_get_ctms_with_disabled_client_fails(
     dbsession, example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """Calling an authenticated API with a valid token for an expired client is an error."""
-    token = create_access_token({"sub": "db_api_client"}, **test_token_settings)
+    token = create_access_token(
+        {"sub": "api_client:db_api_client"}, **test_token_settings
+    )
     api_client = get_api_client_by_name(dbsession, "db_api_client")
     api_client.enabled = False
     dbsession.commit()

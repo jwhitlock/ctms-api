@@ -53,16 +53,21 @@ def create_access_token(
     return encoded_jwt
 
 
-def get_name_from_token(token: str, secret_key: str, algorithm: str):
-    """Get the API client name from a token.
+def get_subject_from_token(token: str, secret_key: str, algorithm: str):
+    """Get the namespace and identifier from a token subject.
 
-    Returns None if the token is invalid, or payload is expired or invalid.
+    Returns (None, None) if the token is invalid, or payload is expired or
+    invalid.
     """
     try:
         payload = jwt.decode(token, secret_key, algorithm)
     except JWTError:
-        return None
-    return payload["sub"]
+        return None, None
+    sub = payload["sub"]
+    if ":" not in sub:
+        return None, None
+    else:
+        return sub.split(":", 1)
 
 
 class OAuth2ClientCredentialsRequestForm:

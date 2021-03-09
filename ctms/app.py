@@ -16,7 +16,7 @@ from .auth import (
     OAuth2ClientCredentials,
     OAuth2ClientCredentialsRequestForm,
     create_access_token,
-    get_name_from_token,
+    get_subject_from_token,
     verify_password,
 )
 from .crud import (
@@ -157,12 +157,14 @@ def get_api_client(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    name = get_name_from_token(
+    namespace, name = get_subject_from_token(
         token,
         secret_key=token_settings["secret_key"],
         algorithm=token_settings["algorithm"],
     )
     if name is None:
+        raise credentials_exception
+    if namespace != "api_client":
         raise credentials_exception
     api_client = get_api_client_by_name(db, name)
     if not api_client:
@@ -437,7 +439,9 @@ def login(
     if not verify_password(secret, api_client.hashed_secret):
         raise failedAuth
 
-    access_token = create_access_token(data={"sub": name}, **token_settings)
+    access_token = create_access_token(
+        data={"sub": f"api_client:{name}"}, **token_settings
+    )
     return {
         "access_token": access_token,
         "token_type": "bearer",
