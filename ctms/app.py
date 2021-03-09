@@ -422,25 +422,15 @@ def login(
     else:
         raise failedAuth
 
-    if client_id.startswith("id_"):
-        name = client_id[len("id_") :]
-    else:
-        raise failedAuth
-
-    if client_secret.startswith("secret_"):
-        secret = client_secret[len("secret_") :]
-    else:
-        raise failedAuth
-
-    api_client = get_api_client_by_name(db, name)
+    api_client = get_api_client_by_name(db, client_id)
     if not api_client or not api_client.enabled:
         raise failedAuth
 
-    if not verify_password(secret, api_client.hashed_secret):
+    if not verify_password(client_secret, api_client.hashed_secret):
         raise failedAuth
 
     access_token = create_access_token(
-        data={"sub": f"api_client:{name}"}, **token_settings
+        data={"sub": f"api_client:{client_id}"}, **token_settings
     )
     return {
         "access_token": access_token,

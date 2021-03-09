@@ -14,7 +14,7 @@ from ctms.schemas import ApiClientSchema
 
 def create_secret():
     """Generate a new secret."""
-    return token_urlsafe(32)
+    return "secret_" + token_urlsafe(32)
 
 
 def create_client(db, name, email, enabled=True):
@@ -23,7 +23,7 @@ def create_client(db, name, email, enabled=True):
     secret = create_secret()
     create_api_client(db, api_client, secret)
     db.flush()
-    return (f"id_{name}", f"secret_{secret}")
+    return (name, secret)
 
 
 def update_client(db, client, email=None, enabled=None, new_secret=None):
@@ -113,6 +113,8 @@ def main(db, settings, test_args=None):
 
     args = parser.parse_args(args=test_args)
     name = args.name
+    if not name.startswith("id_"):
+        name = f"id_{name}"
     email = args.email
     enable = args.enable
     disable = args.disable
@@ -150,8 +152,8 @@ def main(db, settings, test_args=None):
         db.commit()
         if new_secret:
             print_new_credentials(
-                f"id_{existing.name}",
-                f"secret_{new_secret}",
+                existing.name,
+                new_secret,
                 settings,
                 sample_email=email,
                 enabled=enabled,

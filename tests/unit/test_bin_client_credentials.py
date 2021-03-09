@@ -15,7 +15,7 @@ def settings():
 @pytest.fixture
 def existing_client(dbsession):
     client = ApiClient(
-        name="existing", email="existing@example.com", hashed_secret="password"
+        name="id_existing", email="existing@example.com", hashed_secret="password"
     )
     dbsession.add(client)
     dbsession.flush()
@@ -23,12 +23,23 @@ def existing_client(dbsession):
 
 
 def test_create(dbsession, settings):
-    """New client credentials can be generated."""
+    """New client credentials can be generated, with id_ prefixed to the name."""
     ret = main(dbsession, settings, ["test", "--email", "test@example.com"])
     assert ret == 0
 
     client = dbsession.query(ApiClient).one()
-    assert client.name == "test"
+    assert client.name == "id_test"
+    assert client.email == "test@example.com"
+    assert client.enabled == True
+
+
+def test_create_explicit_id(dbsession, settings):
+    """A id_ prefix is not added if it is already there."""
+    ret = main(dbsession, settings, ["id_tst", "--email", "test@example.com"])
+    assert ret == 0
+
+    client = dbsession.query(ApiClient).one()
+    assert client.name == "id_tst"
     assert client.email == "test@example.com"
     assert client.enabled == True
 
@@ -41,7 +52,7 @@ def test_create_disabled(dbsession, settings):
     assert ret == 0
 
     client = dbsession.query(ApiClient).one()
-    assert client.name == "test2"
+    assert client.name == "id_test2"
     assert client.email == "test@example.com"
     assert client.enabled == False
 
@@ -63,7 +74,7 @@ def test_create_valid_name(dbsession, settings, name):
     assert ret == 0
 
     client = dbsession.query(ApiClient).one()
-    assert client.name == name
+    assert client.name == f"id_{name}"
     assert client.email == "test@example.com"
     assert client.enabled == True
 

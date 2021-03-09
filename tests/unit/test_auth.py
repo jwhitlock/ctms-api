@@ -17,12 +17,12 @@ from ctms.schemas import ApiClientSchema
 def client_id_and_secret(dbsession):
     """Return valid OAuth2 client_id and client_secret."""
     api_client = ApiClientSchema(
-        name="db_api_client", email="db_api_client@example.com", enabled=True
+        name="id_db_api_client", email="db_api_client@example.com", enabled=True
     )
-    secret = "what_a_weird_random_string"  # pragma: allowlist secret
+    secret = "secret_what_a_weird_random_string"  # pragma: allowlist secret
     create_api_client(dbsession, api_client, secret)
     dbsession.flush()
-    return ("id_db_api_client", f"secret_{secret}")
+    return (api_client.name, secret)
 
 
 @pytest.fixture
@@ -42,11 +42,11 @@ def test_token_settings():
 
 def test_post_token_header(anon_client, test_token_settings, client_id_and_secret):
     """A backend client can post crendentials in the header"""
-
+    client_id, client_secret = client_id_and_secret
     resp = anon_client.post(
         "/token",
         {"grant_type": "client_credentials"},
-        auth=HTTPBasicAuth(*client_id_and_secret),
+        auth=HTTPBasicAuth(client_id, client_secret),
     )
     assert resp.status_code == 200
     content = resp.json()
@@ -57,7 +57,7 @@ def test_post_token_header(anon_client, test_token_settings, client_id_and_secre
         test_token_settings["secret_key"],
         algorithms=[test_token_settings["algorithm"]],
     )
-    assert payload["sub"] == "api_client:db_api_client"
+    assert payload["sub"] == f"api_client:{client_id}"
     expected_expires = (
         datetime.utcnow() + test_token_settings["expires_delta"]
     ).timestamp()
@@ -84,7 +84,7 @@ def test_post_token_form_data(anon_client, test_token_settings, client_id_and_se
         test_token_settings["secret_key"],
         algorithms=[test_token_settings["algorithm"]],
     )
-    assert payload["sub"] == "api_client:db_api_client"
+    assert payload["sub"] == f"api_client:{client_id}"
     expected_expires = (
         datetime.utcnow() + test_token_settings["expires_delta"]
     ).timestamp()
@@ -123,32 +123,21 @@ def test_post_token_fails_no_credentials(anon_client, dbsession):
     assert resp.json() == {"detail": "Incorrect username or password"}
 
 
-@pytest.mark.parametrize(
-    "bad_id, bad_secret",
-    (
-        ("db_api_client", "secret_what_a_weird_random_string"),
-        ("id_db_api_client", "what_a_weird_random_string"),
-        ("id_other", "secret_what_a_weird_random_string"),
-        ("id_db_api_client", "secret_other_weird_random_string"),
-    ),
-)
-def test_post_token_fails_bad_credentials(
-    anon_client, client_id_and_secret, bad_id, bad_secret
-):
+def test_post_token_fails_bad_credentials(anon_client, client_id_and_secret):
     """Authentication fails on bad credentials."""
     good_id, good_secret = client_id_and_secret
-    assert bad_id == good_id or bad_secret == good_secret
-    resp = anon_client.post("/token", auth=HTTPBasicAuth(bad_id, bad_secret))
+    resp = anon_client.post("/token", auth=HTTPBasicAuth(good_id, good_secret + "x"))
     assert resp.status_code == 400
     assert resp.json() == {"detail": "Incorrect username or password"}
 
 
 def test_post_token_fails_disabled_client(dbsession, anon_client, client_id_and_secret):
     """Authentication fails when the client is disabled."""
-    api_client = get_api_client_by_name(dbsession, "db_api_client")
+    client_id, client_secret = client_id_and_secret
+    api_client = get_api_client_by_name(dbsession, client_id)
     api_client.enabled = False
     dbsession.commit()
-    resp = anon_client.post("/token", auth=HTTPBasicAuth(*client_id_and_secret))
+    resp = anon_client.post("/token", auth=HTTPBasicAuth(client_id, client_secret))
     assert resp.status_code == 400
     assert resp.json() == {"detail": "Incorrect username or password"}
 
@@ -157,8 +146,9 @@ def test_get_ctms_with_token(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """An authenticated API can be fetched with a valid token"""
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "api_client:db_api_client"}, **test_token_settings
+        {"sub": f"api_client:{client_id}"}, **test_token_settings
     )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
@@ -171,8 +161,9 @@ def test_get_ctms_with_invalid_token_fails(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """Calling an authenticated API with an invalid token is an error"""
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "api_client:db_api_client"},
+        {"sub": f"api_client:{client_id}"},
         secret_key="secret_key_from_other_deploy",
         algorithm=test_token_settings["algorithm"],
         expires_delta=test_token_settings["expires_delta"],
@@ -189,8 +180,9 @@ def test_get_ctms_with_invalid_namespace_fails(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """Calling an authenticated API with an unexpected namespace is an error"""
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "unknown:db_api_client"},
+        {"sub": f"unknown:{client_id}"},
         secret_key="secret_key_from_other_deploy",
         algorithm=test_token_settings["algorithm"],
         expires_delta=test_token_settings["expires_delta"],
@@ -207,8 +199,9 @@ def test_get_ctms_with_unknown_client_fails(
     example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """A token with an unknown (deleted?) API client name is an error"""
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "api_client:not_db_api_client"}, **test_token_settings
+        {"sub": f"api_client:not_{client_id}"}, **test_token_settings
     )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
@@ -223,8 +216,9 @@ def test_get_ctms_with_expired_token_fails(
 ):
     """Calling an authenticated API with an expired token is an error"""
     yesterday = datetime.utcnow() - timedelta(days=1)
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "api_client:db_api_client"}, **test_token_settings, now=yesterday
+        {"sub": f"api_client:{client_id}"}, **test_token_settings, now=yesterday
     )
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
@@ -238,10 +232,11 @@ def test_get_ctms_with_disabled_client_fails(
     dbsession, example_contact, anon_client, test_token_settings, client_id_and_secret
 ):
     """Calling an authenticated API with a valid token for an expired client is an error."""
+    client_id, client_secret = client_id_and_secret
     token = create_access_token(
-        {"sub": "api_client:db_api_client"}, **test_token_settings
+        {"sub": f"api_client:{client_id}"}, **test_token_settings
     )
-    api_client = get_api_client_by_name(dbsession, "db_api_client")
+    api_client = get_api_client_by_name(dbsession, client_id)
     api_client.enabled = False
     dbsession.commit()
 
