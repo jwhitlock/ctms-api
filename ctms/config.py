@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     secret_key: str
     token_algorithm: str = "HS256"
     token_expiration: timedelta = timedelta(minutes=60)
+    server_prefix: str = "http://localhost:8000"
 
     class Config:
         env_prefix = "ctms_"

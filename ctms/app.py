@@ -441,7 +441,7 @@ def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": token_settings["expires_delta"].total_seconds(),
+        "expires_in": int(token_settings["expires_delta"].total_seconds()),
     }
 
 

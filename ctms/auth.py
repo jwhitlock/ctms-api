@@ -6,6 +6,7 @@ client_secret, either as form fields in the body, or in the Authentication
 header. A JWT token is returned that expires after a short time. To renew,
 the client POSTs to /token again.
 """
+import warnings
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
@@ -13,10 +14,14 @@ from fastapi.exceptions import HTTPException
 from fastapi.param_functions import Form
 from fastapi.security.oauth2 import OAuth2, OAuthFlowsModel
 from fastapi.security.utils import get_authorization_scheme_param
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED
+
+with warnings.catch_warnings():
+    # TODO: remove when fixed: https://github.com/mpdavis/python-jose/issues/208
+    warnings.filterwarnings("ignore", message="int_from_bytes is deprecated")
+    from jose import JWTError, jwt
 
 # Argon2 is the winner of the 2015 password hashing competion.
 # It is supported by passlib with the recommended argon2_cffi library.
