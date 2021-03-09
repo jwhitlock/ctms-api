@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 import uvicorn
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Request
+from fastapi import Depends, FastAPI, HTTPException, Path
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
 from pydantic import UUID4, EmailStr
