@@ -135,7 +135,7 @@ def client(anon_client):
 
     def test_api_client():
         return ApiClientSchema(
-            name="test_client", email="test_client@example.com", enabled=True
+            client_id="test_client", email="test_client@example.com", enabled=True
         )
 
     app.dependency_overrides[get_api_client] = test_api_client

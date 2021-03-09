@@ -163,7 +163,7 @@ class ApiClient(Base):
 
     __tablename__ = "api_client"
 
-    name = Column(String(255), primary_key=True)
+    client_id = Column(String(255), primary_key=True)
     email = Column(String(255), nullable=False)
     enabled = Column(Boolean, default=True)
     hashed_secret = Column(String, nullable=False)

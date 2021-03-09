@@ -7,7 +7,7 @@ from secrets import token_urlsafe
 
 from ctms import config
 from ctms.auth import hash_password
-from ctms.crud import create_api_client, get_api_client_by_name
+from ctms.crud import create_api_client, get_api_client_by_id
 from ctms.database import get_db_engine
 from ctms.schemas import ApiClientSchema
 
@@ -17,13 +17,13 @@ def create_secret():
     return "secret_" + token_urlsafe(32)
 
 
-def create_client(db, name, email, enabled=True):
+def create_client(db, client_id, email, enabled=True):
     """Return a new OAuth2 client_id and client_secret."""
-    api_client = ApiClientSchema(name=name, email=email, enabled=enabled)
+    api_client = ApiClientSchema(client_id=client_id, email=email, enabled=enabled)
     secret = create_secret()
     create_api_client(db, api_client, secret)
     db.flush()
-    return (name, secret)
+    return (client_id, secret)
 
 
 def update_client(db, client, email=None, enabled=None, new_secret=None):
@@ -113,8 +113,6 @@ def main(db, settings, test_args=None):
 
     args = parser.parse_args(args=test_args)
     name = args.name
-    if not name.startswith("id_"):
-        name = f"id_{name}"
     email = args.email
     enable = args.enable
     disable = args.disable
@@ -130,7 +128,11 @@ def main(db, settings, test_args=None):
         print(f"Can only pick one of --enable and --disable")
         return 1
 
-    existing = get_api_client_by_name(db, name)
+    if name.startswith("id_"):
+        client_id = name
+    else:
+        client_id = f"id_{name}"
+    existing = get_api_client_by_id(db, client_id)
     if existing:
         if disable and existing.enabled:
             enabled = False
@@ -152,7 +154,7 @@ def main(db, settings, test_args=None):
         db.commit()
         if new_secret:
             print_new_credentials(
-                existing.name,
+                existing.client_id,
                 new_secret,
                 settings,
                 sample_email=email,
@@ -166,7 +168,7 @@ def main(db, settings, test_args=None):
             return 1
 
         enabled = not disable
-        client_id, client_secret = create_client(db, name, email, enabled)
+        client_id, client_secret = create_client(db, client_id, email, enabled)
         db.commit()
         print_new_credentials(
             client_id, client_secret, settings, sample_email=email, enabled=enabled

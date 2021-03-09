@@ -160,5 +160,5 @@ def create_api_client(db: Session, api_client: ApiClientSchema, secret):
     db.add(db_api_client)
 
 
-def get_api_client_by_name(db: Session, name: str):
-    return db.query(ApiClient).filter(ApiClient.name == name).one_or_none()
+def get_api_client_by_id(db: Session, client_id: str):
+    return db.query(ApiClient).filter(ApiClient.client_id == client_id).one_or_none()

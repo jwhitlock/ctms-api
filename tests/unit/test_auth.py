@@ -8,7 +8,7 @@ from requests.auth import HTTPBasicAuth
 
 from ctms.app import app, token_settings
 from ctms.auth import create_access_token, hash_password, verify_password
-from ctms.crud import create_api_client, get_api_client_by_name
+from ctms.crud import create_api_client, get_api_client_by_id
 from ctms.models import ApiClient
 from ctms.schemas import ApiClientSchema
 
@@ -17,12 +17,12 @@ from ctms.schemas import ApiClientSchema
 def client_id_and_secret(dbsession):
     """Return valid OAuth2 client_id and client_secret."""
     api_client = ApiClientSchema(
-        name="id_db_api_client", email="db_api_client@example.com", enabled=True
+        client_id="id_db_api_client", email="db_api_client@example.com", enabled=True
     )
     secret = "secret_what_a_weird_random_string"  # pragma: allowlist secret
     create_api_client(dbsession, api_client, secret)
     dbsession.flush()
-    return (api_client.name, secret)
+    return (api_client.client_id, secret)
 
 
 @pytest.fixture
@@ -134,7 +134,7 @@ def test_post_token_fails_bad_credentials(anon_client, client_id_and_secret):
 def test_post_token_fails_disabled_client(dbsession, anon_client, client_id_and_secret):
     """Authentication fails when the client is disabled."""
     client_id, client_secret = client_id_and_secret
-    api_client = get_api_client_by_name(dbsession, client_id)
+    api_client = get_api_client_by_id(dbsession, client_id)
     api_client.enabled = False
     dbsession.commit()
     resp = anon_client.post("/token", auth=HTTPBasicAuth(client_id, client_secret))
@@ -236,7 +236,7 @@ def test_get_ctms_with_disabled_client_fails(
     token = create_access_token(
         {"sub": f"api_client:{client_id}"}, **test_token_settings
     )
-    api_client = get_api_client_by_name(dbsession, client_id)
+    api_client = get_api_client_by_id(dbsession, client_id)
     api_client.enabled = False
     dbsession.commit()
 

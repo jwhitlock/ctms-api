@@ -21,7 +21,7 @@ from .auth import (
 )
 from .crud import (
     create_contact,
-    get_api_client_by_name,
+    get_api_client_by_id,
     get_contact_by_email_id,
     get_contacts_by_any_id,
     get_email_by_email_id,
@@ -166,7 +166,7 @@ def get_api_client(
         raise credentials_exception
     if namespace != "api_client":
         raise credentials_exception
-    api_client = get_api_client_by_name(db, name)
+    api_client = get_api_client_by_id(db, name)
     if not api_client:
         raise credentials_exception
     return api_client
@@ -422,7 +422,7 @@ def login(
     else:
         raise failedAuth
 
-    api_client = get_api_client_by_name(db, client_id)
+    api_client = get_api_client_by_id(db, client_id)
     if not api_client or not api_client.enabled:
         raise failedAuth
 
