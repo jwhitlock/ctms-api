@@ -403,7 +403,6 @@ def read_contact_fxa(
     summary="Get OAuth2 access token",
     response_model=TokenResponse,
     responses={400: {"model": BadRequestResponse}},
-    tags=["Private"],
 )
 def login(
     db: Session = Depends(get_db),
@@ -425,7 +424,6 @@ def login(
     api_client = get_api_client_by_id(db, client_id)
     if not api_client or not api_client.enabled:
         raise failedAuth
-
     if not verify_password(client_secret, api_client.hashed_secret):
         raise failedAuth
 

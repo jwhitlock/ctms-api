@@ -54,10 +54,10 @@ def create_access_token(
 
 
 def get_subject_from_token(token: str, secret_key: str, algorithm: str):
-    """Get the namespace and identifier from a token subject.
+    """Get the parts of a valid token subject.
 
-    Returns (None, None) if the token is invalid, or payload is expired or
-    invalid.
+    Returns (namespace, identity) if the token is valid
+    Returns (None, None) if the token is expired or invalid, or the payload is invalid.
     """
     try:
         payload = jwt.decode(token, secret_key, algorithm)
@@ -72,7 +72,11 @@ def get_subject_from_token(token: str, secret_key: str, algorithm: str):
 
 class OAuth2ClientCredentialsRequestForm:
     """
-    This is a dependency class, use it like:
+    Expect OAuth2 client credentials as form request parameters
+
+    This is a dependency class, modeled after OAuth2PasswordRequestForm and similar.
+    Use it like:
+
         @app.post("/login")
         def login(form_data: OAuth2ClientCredentialsRequestForm = Depends()):
             data = form_data.parse()
