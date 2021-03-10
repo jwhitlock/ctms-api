@@ -181,12 +181,7 @@ def test_get_ctms_with_invalid_namespace_fails(
 ):
     """Calling an authenticated API with an unexpected namespace is an error"""
     client_id, client_secret = client_id_and_secret
-    token = create_access_token(
-        {"sub": f"unknown:{client_id}"},
-        secret_key="secret_key_from_other_deploy",
-        algorithm=test_token_settings["algorithm"],
-        expires_delta=test_token_settings["expires_delta"],
-    )
+    token = create_access_token({"sub": f"unknown:{client_id}"}, **test_token_settings)
     resp = anon_client.get(
         f"/ctms/{example_contact.email.email_id}",
         headers={"Authorization": f"Bearer {token}"},
