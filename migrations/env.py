@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 
 from ctms.config import Settings
 from ctms.database import get_db_engine
@@ -15,7 +14,7 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+fileConfig(config.config_file_name, disable_existing_loggers=True)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -62,7 +61,9 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    connectable, _ = get_db_engine(settings)
+    connectable = config.attributes.get("connection", None)
+    if connectable is None:
+        connectable, _ = get_db_engine(settings)
 
     with connectable.connect() as connection:
         context.configure(
@@ -70,6 +71,7 @@ def run_migrations_online():
             target_metadata=target_metadata,
             compare_server_default=True,
             compare_type=True,
+            include_schemas=True,
         )
 
         with context.begin_transaction():

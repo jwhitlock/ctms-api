@@ -44,6 +44,8 @@ detect-secrets = "^0.14.3"
 bandit = "^1.7.0"
 SQLAlchemy-Utils = "^0.36.8"
 pylint = "^2.7.2"
+pytest-alembic = "^0.2.5"
+pylint-pytest = "^1.0.3"
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -74,11 +76,16 @@ testpaths = [
     [tool.pylint.FORMAT]
     good-names = 'e,db,SessionLocal' # Normally pylint objects to these due to not being snake_case
     [tool.pylint.TYPECHECK]
-    generated-members='alembic.*'
+    generated-members= [
+        'alembic.*',
+        # from alembic import context, migrations/env.py
+        'context.(config|configure|begin_transaction|run_migrations|is_offline_mode)',
+    ]
     [tool.pylint.MASTER]
     extension-pkg-whitelist='pydantic'
     ignore='third_party'
     ignore-patterns = "migrations/.*,tests/.*/.*" # Not worth fixing yet
+    load-plugins='pylint_pytest'
 
 [tool.black]
 line-length = 88

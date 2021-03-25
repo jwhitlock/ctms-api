@@ -47,10 +47,6 @@ def engine(pytestconfig):
 
     echo = pytestconfig.getoption("verbose") > 2
     test_engine = create_engine(test_db_url, echo=echo)
-
-    # TODO: Convert to running alembic migrations
-    Base.metadata.create_all(bind=test_engine)
-
     yield test_engine
     test_engine.dispose()
     if drop_db:
@@ -58,11 +54,22 @@ def engine(pytestconfig):
 
 
 @pytest.fixture
-def connection(engine):
+def alembic_engine(request, engine):
+    yield engine
+
+
+@pytest.fixture(scope="session")
+def migrated_db(engine):
+    Base.metadata.create_all(bind=engine)
+    return engine
+
+
+@pytest.fixture
+def connection(migrated_db):
     """Return a connection to the database that rolls back automatically."""
-    with engine.begin() as connection:
-        savepoint = connection.begin_nested()
-        yield connection
+    with migrated_db.begin() as the_connection:
+        savepoint = the_connection.begin_nested()
+        yield the_connection
         savepoint.rollback()
 
 
