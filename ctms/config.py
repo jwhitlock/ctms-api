@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     fastapi_env: Optional[str] = None
     is_gunicorn: bool = False
     prometheus_multiproc_dir: Optional[DirectoryPath] = None
+    prometheus_debug_pid: bool = False
 
     class Config:
         env_prefix = "ctms_"

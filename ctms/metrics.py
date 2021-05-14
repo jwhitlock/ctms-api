@@ -1,6 +1,7 @@
 """Prometheus metrics for instrumentation and monitoring."""
 
 from itertools import product
+from os import getpid
 from typing import Any, Dict, cast
 
 from fastapi import FastAPI
@@ -51,6 +52,16 @@ METRICS_PARAMS = {
             ],
         },
     ),
+    "pid": (
+        Counter,
+        {
+            "name": "ctms_pid_total",
+            "documentation": "Requests by PID",
+            "labelnames": [
+                "pid",
+            ],
+        },
+    ),
 }
 
 
@@ -86,8 +97,16 @@ def get_metrics_reporting_registry(
 
 def init_metrics(registry: CollectorRegistry) -> Dict[str, MetricWrapperBase]:
     """Initialize the metrics with the registry."""
+    try:
+        settings = config.Settings()
+        prometheus_debug_pid = settings.prometheus_debug_pid
+    except ValidationError:
+        prometheus_debug_pid = False
+
     metrics = {}
     for name, init_bits in METRICS_PARAMS.items():
+        if name == "pid" and not prometheus_debug_pid:
+            continue
         metric_type, params = init_bits
         metrics[name] = metric_type(registry=registry, **params)
     return metrics
@@ -179,3 +198,6 @@ def emit_response_metrics(
             client_id=client_id,
             status_code_family=status_code_family,
         ).inc()
+
+    if "pid" in metrics:
+        metrics["pid"].labels(pid=getpid()).inc()
